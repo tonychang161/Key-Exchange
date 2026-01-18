@@ -1,0 +1,15 @@
+name: Auto-merge
+
+on:
+  check_suite:
+    types: [completed]
+
+jobs:
+  auto-merge:
+    if: github.event.check_suite.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge PR
+        run: gh pr merge --squash --auto "${{ github.event.check_suite.pull_requests[0].number }}" || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
