@@ -43,6 +43,38 @@ jobs:
           echo "key_files<<EOF" >> $GITHUB_OUTPUT
           echo "$KEY_FILES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Check each file contains only one key
+        run: |
+          KEY_FILES="${{ steps.changed-files.outputs.key_files }}"
+          
+          if [ -z "$KEY_FILES" ]; then
+            exit 0
+          fi
+          
+          FAILED=0
+          
+          for keyfile in $KEY_FILES; do
+            KEY_COUNT=$(gpg --with-colons --import-options show-only --import "$keyfile" 2>/dev/null | grep "^pub:" | wc -l)
+            
+            if [ "$KEY_COUNT" -eq 0 ]; then
+              echo "❌ No valid key found: $keyfile"
+              FAILED=$((FAILED + 1))
+            elif [ "$KEY_COUNT" -gt 1 ]; then
+              echo "❌ Multiple keys ($KEY_COUNT) in file: $keyfile"
+              FAILED=$((FAILED + 1))
+            else
+              echo "✅ Single key: $keyfile"
+            fi
+          done
+          
+          if [ $FAILED -gt 0 ]; then
+            echo ""
+            echo "=========================================="
+            echo "❌ Each .asc file must contain exactly one key"
+            echo "=========================================="
+            exit 1
+          fi
 
       - name: Check for disallowed files
         run: |
